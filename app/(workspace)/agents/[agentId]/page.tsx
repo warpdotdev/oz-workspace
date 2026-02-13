@@ -135,6 +135,14 @@ export default function AgentDetailPage({
             </Field>
             <Field>
               <FieldLabel htmlFor="detail-env">Environment ID</FieldLabel>
+              <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground space-y-1">
+                <p>To create an environment:</p>
+                <ol className="list-decimal ml-4 space-y-0.5">
+                  <li>Clone the <a href="https://github.com/warpdotdev/oz_workspace_agent" target="_blank" rel="noopener noreferrer" className="underline text-foreground">oz_workspace_agent</a> repository.</li>
+                  <li>Visit <a href="https://oz.warp.dev/environments" target="_blank" rel="noopener noreferrer" className="underline text-foreground">oz.warp.dev/environments</a>, auth with your GitHub account, and add the cloned repo to a new environment.</li>
+                  <li>Enter the environment ID below.</li>
+                </ol>
+              </div>
               <Input
                 id="detail-env"
                 value={agent.environmentId}

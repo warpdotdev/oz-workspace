@@ -43,7 +43,7 @@ export default function SettingsPage() {
               Warp API Key
             </label>
             <p className="text-xs text-muted-foreground">
-              Used to authenticate with the Warp API for running agents.
+              Open the Warp desktop application, and go to Settings &gt; Platform to create an API key. Then, enter it here.
             </p>
             <div className="flex gap-2">
               <div className="relative flex-1">

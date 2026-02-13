@@ -20,8 +20,17 @@ function getArtifactTitle(a: ArtifactItem) {
   }
 }
 
+function slugify(text: string) {
+  return text.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-")
+}
+
 function getArtifactUrl(a: ArtifactItem) {
   if (a.artifact_type === "PULL_REQUEST") return a.data.url
+  if (a.artifact_type === "PLAN" && a.data.notebook_uid) {
+    const base = (process.env.WARP_API_URL || "https://app.warp.dev").replace(/\/+$/, "")
+    const slug = a.data.title ? `${slugify(a.data.title)}-${a.data.notebook_uid}` : a.data.notebook_uid
+    return `${base}/drive/notebook/${slug}`
+  }
   return null
 }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ArrowRightIcon, PaperPlaneRightIcon, UserIcon, DotsThreeIcon } from "@phosphor-icons/react"
+import { ArrowRightIcon, PaperPlaneRightIcon, UserIcon, DotsThreeIcon, StopCircleIcon, PlayCircleIcon } from "@phosphor-icons/react"
 import { AgentIcon } from "@/components/agent-icon"
 import { AddAgentsBanner } from "@/components/add-agents-banner"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -203,6 +203,7 @@ export function ChatStream({ roomId }: { roomId: string }) {
   const [input, setInput] = React.useState("")
   const [sending, setSending] = React.useState(false)
   const [showAgentsBanner, setShowAgentsBanner] = React.useState(false)
+  const [togglingPause, setTogglingPause] = React.useState(false)
   const scrollRef = React.useRef<HTMLDivElement>(null)
 
   // Fetch messages on mount (independent of SSE)
@@ -215,6 +216,21 @@ export function ChatStream({ roomId }: { roomId: string }) {
   // Fallback: while any agent is running, periodically refetch messages/room state.
   // This helps if the SSE stream gets dropped during long-running tasks.
   const hasRunningAgents = agents.some((a) => a.status === "running" && a.activeRoomId === roomId)
+  const isPaused = room?.paused ?? false
+
+  const togglePause = async (paused: boolean) => {
+    setTogglingPause(true)
+    try {
+      await fetch(`/api/rooms/${roomId}/pause`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paused }),
+      })
+      await refreshRoom(roomId)
+    } finally {
+      setTogglingPause(false)
+    }
+  }
   React.useEffect(() => {
     if (!hasRunningAgents) return
     const interval = setInterval(() => {
@@ -291,6 +307,22 @@ export function ChatStream({ roomId }: { roomId: string }) {
             className="min-h-[36px] max-h-[120px]"
             rows={1}
           />
+          {(hasRunningAgents || isPaused) && (
+            <Button
+              size="icon"
+              variant={isPaused ? "default" : "destructive"}
+              className="shrink-0"
+              disabled={togglingPause}
+              onClick={() => togglePause(!isPaused)}
+              title={isPaused ? "Resume invocations" : "Stop invocations"}
+            >
+              {isPaused ? (
+                <PlayCircleIcon className="h-4 w-4" />
+              ) : (
+                <StopCircleIcon className="h-4 w-4" />
+              )}
+            </Button>
+          )}
           <Button
             size="icon"
             className="shrink-0"

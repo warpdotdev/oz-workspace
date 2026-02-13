@@ -28,6 +28,7 @@ model Room {
   id          String   @id @default(cuid())
   name        String
   description String   @default("")
+  paused      Boolean  @default(false)
   userId      String?
   publicShareId       String?  @unique
   publicShareEnabledAt DateTime?

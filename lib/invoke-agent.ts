@@ -62,6 +62,19 @@ export async function invokeAgent({
     return { success: false, error: "roomId, agentId, and prompt are required", errorStatus: 400 }
   }
 
+  // Check if room invocations are paused
+  const roomForPause = await prisma.room.findUnique({ where: { id: roomId }, select: { paused: true } })
+  if (roomForPause?.paused) {
+    console.log("[invokeAgent] Room is paused, skipping invocation for", agentId)
+    // Reset agent to idle since it was optimistically set to running but won't actually start
+    await prisma.agent.updateMany({
+      where: { id: agentId, activeRoomId: roomId },
+      data: { status: "idle", activeRoomId: null },
+    })
+    eventBroadcaster.broadcast({ type: "room", roomId, data: null })
+    return { success: false, error: "Room invocations are paused", errorStatus: 409 }
+  }
+
   // Look up agent config
   const agent = await prisma.agent.findUnique({ where: { id: agentId } })
   if (!agent) {
@@ -197,7 +210,7 @@ To mention an agent, include @agent-name in your response message.
 
     const environmentId = agent.environmentId || process.env.WARP_ENVIRONMENT_ID
     if (!environmentId) {
-      throw new Error("No environment ID configured. Set WARP_ENVIRONMENT_ID in your environment or configure it on the agent.")
+      throw new Error("No environment ID configured. Configure it on the agent.")
     }
     console.log("[invokeAgent] Using environment:", environmentId)
 

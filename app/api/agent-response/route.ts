@@ -236,7 +236,11 @@ export async function POST(request: Request) {
       // If the agent response itself contains @mentions, dispatch those teammates from here.
       // This is more reliable than relying on the long-running invokeAgent function to survive until
       // it can process agent-to-agent mentions.
-      try {
+      // Skip dispatch if the room is paused (responses are still accepted, but no new agents are invoked).
+      const roomForPause = await prisma.room.findUnique({ where: { id: roomId }, select: { paused: true } })
+      if (roomForPause?.paused) {
+        console.log("[agent-response] Room is paused, skipping mention dispatch")
+      } else try {
         const roomAgents = await prisma.roomAgent.findMany({
           where: { roomId },
           include: { agent: true },

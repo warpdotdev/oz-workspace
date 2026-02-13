@@ -9,6 +9,7 @@ export interface Room {
   id: string
   name: string
   description: string
+  paused?: boolean
   publicShareId?: string | null
   createdAt: string
   agents?: AgentSummary[]

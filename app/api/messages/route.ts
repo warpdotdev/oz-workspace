@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     })
 
     // If this is a human message, check for @mentions and dispatch mentioned agents
-    if (authorType === "human" && typeof content === "string" && content.includes("@")) {
+    if (authorType === "human" && typeof content === "string" && content.includes("@") && !room.paused) {
       // Get room agents only if there is a possibility of mentions.
       const roomAgents = await prisma.roomAgent.findMany({
         where: { roomId },

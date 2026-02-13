@@ -62,7 +62,7 @@ function mapRunState(state: RunItem["state"]): TaskStatus["state"] {
 
 function mapRunItemToTaskStatus(data: RunItem): TaskStatus {
   return {
-    taskId: data.run_id,
+    taskId: data.run_id || data.task_id,
     state: mapRunState(data.state),
     title: data.title,
     sessionLink: data.session_link,
@@ -89,7 +89,8 @@ export async function runAgent(options: RunAgentOptions): Promise<string> {
   })
 
   console.log("[oz-client] runAgent response:", response)
-  return response.run_id
+  // The API may return run_id or the deprecated task_id depending on version.
+  return response.run_id || response.task_id
 }
 
 export async function getTaskStatus(taskId: string, userId?: string | null): Promise<TaskStatus> {

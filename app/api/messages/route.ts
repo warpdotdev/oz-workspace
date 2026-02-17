@@ -22,10 +22,17 @@ export async function GET(request: Request) {
     const limit = Math.min(Number(searchParams.get("limit")) || 50, 200)
     const cursor = searchParams.get("cursor") // message ID to paginate before
 
+    let cursorTimestamp: Date | undefined
+    if (cursor) {
+      const cursorMsg = await prisma.message.findFirst({ where: { id: cursor, roomId } })
+      if (!cursorMsg) return NextResponse.json({ error: "Invalid cursor" }, { status: 400 })
+      cursorTimestamp = cursorMsg.timestamp
+    }
+
     const messages = await prisma.message.findMany({
       where: {
         roomId,
-        ...(cursor ? { timestamp: { lt: (await prisma.message.findUnique({ where: { id: cursor } }))?.timestamp ?? new Date() } } : {}),
+        ...(cursorTimestamp ? { timestamp: { lt: cursorTimestamp } } : {}),
       },
       include: {
         agent: { select: { id: true, name: true, color: true, icon: true, status: true, activeRoomId: true } },

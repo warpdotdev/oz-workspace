@@ -199,20 +199,26 @@ function TypingIndicator({ agents, roomId }: { agents: AgentSummary[]; roomId: s
   )
 }
 
+const EMPTY_AGENTS: AgentSummary[] = []
+
 export function ChatStream({ roomId }: { roomId: string }) {
   const { messagesByRoom, sendMessage, fetchMessages, fetchOlderMessages, hasMoreByRoom } = useMessageStore()
   const { rooms, refreshRoom } = useRoomStore()
   const room = rooms.find((r) => r.id === roomId)
-  const agents = room?.agents ?? []
+  const rawAgents = room?.agents
+  // Memoize agents by serialized value so the reference is stable across room refreshes (#7)
+  const agentsKey = React.useMemo(() => JSON.stringify(rawAgents ?? []), [rawAgents])
+  const agents: AgentSummary[] = React.useMemo(() => rawAgents ?? EMPTY_AGENTS, [agentsKey])
   const messages = messagesByRoom[roomId] || []
   const hasMore = hasMoreByRoom[roomId] ?? false
   const [input, setInput] = React.useState("")
   const [sending, setSending] = React.useState(false)
   const [showAgentsBanner, setShowAgentsBanner] = React.useState(false)
   const [togglingPause, setTogglingPause] = React.useState(false)
-  const [loadingOlder, setLoadingOlder] = React.useState(false)
+  const [loadingOlderUI, setLoadingOlderUI] = React.useState(false)
   const scrollRef = React.useRef<HTMLDivElement>(null)
-  const prevMessageCountRef = React.useRef(0)
+  const lastMessageIdRef = React.useRef<string | null>(null)
+  const loadingOlderRef = React.useRef(false)
 
   // Virtualizer for the message list
   const virtualizer = useVirtualizer({
@@ -229,8 +235,8 @@ export function ChatStream({ roomId }: { roomId: string }) {
 
   // Use SSE for real-time updates
   useRealtime(roomId)
-  // Fallback: while any agent is running, periodically refetch messages/room state.
-  // This helps if the SSE stream gets dropped during long-running tasks.
+  // Fallback: while any agent is running, periodically refresh room state.
+  // SSE + appendMessage already handles new messages; only refresh room for agent status.
   const hasRunningAgents = agents.some((a) => a.status === "running" && a.activeRoomId === roomId)
   const isPaused = room?.paused ?? false
 
@@ -250,41 +256,54 @@ export function ChatStream({ roomId }: { roomId: string }) {
   React.useEffect(() => {
     if (!hasRunningAgents) return
     const interval = setInterval(() => {
-      fetchMessages(roomId)
       refreshRoom(roomId)
     }, 10_000)
     return () => clearInterval(interval)
-  }, [hasRunningAgents, roomId, fetchMessages, refreshRoom])
+  }, [hasRunningAgents, roomId, refreshRoom])
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom only when new messages are appended (not prepended) (#3)
   React.useEffect(() => {
-    if (messages.length > prevMessageCountRef.current && messages.length > 0) {
-      virtualizer.scrollToIndex(messages.length - 1, { align: "end" })
+    if (messages.length === 0) return
+    const lastMsg = messages[messages.length - 1]
+    // Only scroll if the last message changed (new message appended at end)
+    if (lastMsg.id !== lastMessageIdRef.current) {
+      // Don't scroll if we're loading older messages (prepend)
+      if (!loadingOlderRef.current) {
+        virtualizer.scrollToIndex(messages.length - 1, { align: "end" })
+      }
     }
-    prevMessageCountRef.current = messages.length
-  }, [messages.length, virtualizer])
+    lastMessageIdRef.current = lastMsg.id
+  }, [messages, virtualizer])
 
-  // Load older messages when scrolling near top
+  // Load older messages when scrolling near top (#4/#5)
   React.useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     const handleScroll = () => {
-      if (el.scrollTop < 200 && hasMore && !loadingOlder) {
-        setLoadingOlder(true)
-        const prevHeight = el.scrollHeight
+      if (el.scrollTop < 200 && hasMore && !loadingOlderRef.current) {
+        loadingOlderRef.current = true
+        setLoadingOlderUI(true)
+        // Remember which message index was at the top of the viewport
+        const topItems = virtualizer.getVirtualItems()
+        const firstVisibleIndex = topItems.length > 0 ? topItems[0].index : 0
         fetchOlderMessages(roomId).then(() => {
-          // Preserve scroll position after prepending
+          // After prepend, the old first-visible item shifted down by the number of prepended items.
+          // The new messages.length - old messages.length gives us the offset.
           requestAnimationFrame(() => {
-            const newHeight = el.scrollHeight
-            el.scrollTop += newHeight - prevHeight
-            setLoadingOlder(false)
+            const newMessages = useMessageStore.getState().messagesByRoom[roomId] || []
+            const prepended = newMessages.length - (messages.length)
+            if (prepended > 0) {
+              virtualizer.scrollToIndex(firstVisibleIndex + prepended, { align: "start" })
+            }
+            loadingOlderRef.current = false
+            setLoadingOlderUI(false)
           })
-        }).catch(() => setLoadingOlder(false))
+        }).catch(() => { loadingOlderRef.current = false; setLoadingOlderUI(false) })
       }
     }
     el.addEventListener("scroll", handleScroll, { passive: true })
     return () => el.removeEventListener("scroll", handleScroll)
-  }, [roomId, hasMore, loadingOlder, fetchOlderMessages])
+  }, [roomId, hasMore, messages.length, fetchOlderMessages, virtualizer])
 
   // Hide the banner once agents are added
   React.useEffect(() => {
@@ -322,7 +341,7 @@ export function ChatStream({ roomId }: { roomId: string }) {
     <div className="flex h-full flex-col">
       <div className="flex-1 min-h-0">
         <div ref={scrollRef} className="h-full overflow-auto">
-          {loadingOlder && (
+          {loadingOlderUI && (
             <div className="flex items-center justify-center py-2 text-xs text-muted-foreground">
               Loading older messages...
             </div>

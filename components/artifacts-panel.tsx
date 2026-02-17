@@ -28,7 +28,7 @@ function ArtifactCard({ artifact }: { artifact: Artifact }) {
   const ownerColor = artifact.agent?.color
 
   return (
-    <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50 transition-colors cursor-pointer">
+    <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
       <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="flex-1 min-w-0">
         <div className="truncate">{artifact.title}</div>

@@ -1,6 +1,7 @@
 import OzAPI from "oz-agent-sdk"
 import type { ArtifactItem, RunItem } from "oz-agent-sdk/resources/agent/runs"
 import { prisma } from "@/lib/prisma"
+import { warpRateLimiter } from "@/lib/rate-limiter"
 
 // Re-export SDK types so consumers don't need to import from the SDK directly.
 export type { ArtifactItem }
@@ -89,10 +90,12 @@ export async function runAgent(options: RunAgentOptions): Promise<string> {
 
   console.log("[oz-client] Request:", { prompt: options.prompt?.substring(0, 100) + "...", config })
 
-  const response = await client.agent.run({
-    prompt: options.prompt,
-    ...(Object.keys(config).length > 0 ? { config } : {}),
-  })
+  const response = await warpRateLimiter.enqueue(() =>
+    client.agent.run({
+      prompt: options.prompt,
+      ...(Object.keys(config).length > 0 ? { config } : {}),
+    })
+  )
 
   console.log("[oz-client] runAgent response:", response)
   // The API may return run_id or the deprecated task_id depending on version.
@@ -107,7 +110,7 @@ export async function getTaskStatus(taskId: string, userId?: string | null): Pro
 }
 
 async function retrieveTaskStatus(client: OzAPI, taskId: string): Promise<TaskStatus> {
-  const data = await client.agent.runs.retrieve(taskId)
+  const data = await warpRateLimiter.enqueue(() => client.agent.runs.retrieve(taskId))
   console.log("[oz-client] getTaskStatus response:", JSON.stringify(data, null, 2))
 
   return mapRunItemToTaskStatus(data)

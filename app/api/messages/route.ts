@@ -19,21 +19,35 @@ export async function GET(request: Request) {
     const room = await prisma.room.findUnique({ where: { id: roomId, userId } })
     if (!room) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
+    const limit = Math.min(Number(searchParams.get("limit")) || 50, 200)
+    const cursor = searchParams.get("cursor") // message ID to paginate before
+
     const messages = await prisma.message.findMany({
-      where: { roomId },
+      where: {
+        roomId,
+        ...(cursor ? { timestamp: { lt: (await prisma.message.findUnique({ where: { id: cursor } }))?.timestamp ?? new Date() } } : {}),
+      },
       include: {
         agent: { select: { id: true, name: true, color: true, icon: true, status: true, activeRoomId: true } },
       },
-      orderBy: { timestamp: "asc" },
+      orderBy: { timestamp: "desc" },
+      take: limit,
     })
 
-    return NextResponse.json(
-      messages.map((m) => ({
+    // Reverse so messages are in chronological order
+    messages.reverse()
+
+    const hasMore = messages.length === limit
+
+    return NextResponse.json({
+      messages: messages.map((m) => ({
         ...m,
         author: m.authorType === "agent" ? m.agent : undefined,
         agent: undefined,
-      }))
-    )
+      })),
+      hasMore,
+      nextCursor: messages.length > 0 ? messages[0].id : null,
+    })
   } catch (error) {
     if (error instanceof AuthError) return unauthorizedResponse()
     console.error("GET /api/messages error:", error)

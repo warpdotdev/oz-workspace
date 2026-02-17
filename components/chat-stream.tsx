@@ -2,9 +2,9 @@
 
 import * as React from "react"
 import { ArrowRightIcon, PaperPlaneRightIcon, UserIcon, DotsThreeIcon, StopCircleIcon, PlayCircleIcon } from "@phosphor-icons/react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { AgentIcon } from "@/components/agent-icon"
 import { AddAgentsBanner } from "@/components/add-agents-banner"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { MentionTextarea } from "@/components/mention-textarea"
@@ -123,8 +123,13 @@ function renderMarkdownWithMentions(content: string, agents: AgentSummary[]) {
   )
 }
 
-function MessageBubble({ message, agents }: { message: Message; agents: AgentSummary[] }) {
+const MessageBubble = React.memo(function MessageBubble({ message, agents }: { message: Message; agents: AgentSummary[] }) {
   const isHuman = message.authorType === "human"
+
+  const renderedContent = React.useMemo(
+    () => renderMarkdownWithMentions(message.content, agents),
+    [message.content, agents]
+  )
 
   return (
     <div className="flex items-start gap-3 px-4 py-2 hover:bg-muted/50 transition-colors">
@@ -150,7 +155,7 @@ function MessageBubble({ message, agents }: { message: Message; agents: AgentSum
           <span className="text-xs text-muted-foreground">{formatTime(message.timestamp)}</span>
         </div>
         <div className="text-sm mt-0.5">
-          {renderMarkdownWithMentions(message.content, agents)}
+          {renderedContent}
         </div>
         {message.sessionUrl && (
           <a
@@ -166,7 +171,7 @@ function MessageBubble({ message, agents }: { message: Message; agents: AgentSum
       </div>
     </div>
   )
-}
+})
 
 function TypingIndicator({ agents, roomId }: { agents: AgentSummary[]; roomId: string }) {
   const runningAgents = agents.filter((a) => a.status === "running" && a.activeRoomId === roomId)
@@ -195,16 +200,27 @@ function TypingIndicator({ agents, roomId }: { agents: AgentSummary[]; roomId: s
 }
 
 export function ChatStream({ roomId }: { roomId: string }) {
-  const { messagesByRoom, sendMessage, fetchMessages } = useMessageStore()
+  const { messagesByRoom, sendMessage, fetchMessages, fetchOlderMessages, hasMoreByRoom } = useMessageStore()
   const { rooms, refreshRoom } = useRoomStore()
   const room = rooms.find((r) => r.id === roomId)
   const agents = room?.agents ?? []
   const messages = messagesByRoom[roomId] || []
+  const hasMore = hasMoreByRoom[roomId] ?? false
   const [input, setInput] = React.useState("")
   const [sending, setSending] = React.useState(false)
   const [showAgentsBanner, setShowAgentsBanner] = React.useState(false)
   const [togglingPause, setTogglingPause] = React.useState(false)
+  const [loadingOlder, setLoadingOlder] = React.useState(false)
   const scrollRef = React.useRef<HTMLDivElement>(null)
+  const prevMessageCountRef = React.useRef(0)
+
+  // Virtualizer for the message list
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 72,
+    overscan: 10,
+  })
 
   // Fetch messages on mount (independent of SSE)
   React.useEffect(() => {
@@ -240,12 +256,35 @@ export function ChatStream({ roomId }: { roomId: string }) {
     return () => clearInterval(interval)
   }, [hasRunningAgents, roomId, fetchMessages, refreshRoom])
 
+  // Auto-scroll to bottom when new messages arrive
   React.useEffect(() => {
-    // Auto-scroll to bottom on new messages
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    if (messages.length > prevMessageCountRef.current && messages.length > 0) {
+      virtualizer.scrollToIndex(messages.length - 1, { align: "end" })
     }
-  }, [messages.length])
+    prevMessageCountRef.current = messages.length
+  }, [messages.length, virtualizer])
+
+  // Load older messages when scrolling near top
+  React.useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const handleScroll = () => {
+      if (el.scrollTop < 200 && hasMore && !loadingOlder) {
+        setLoadingOlder(true)
+        const prevHeight = el.scrollHeight
+        fetchOlderMessages(roomId).then(() => {
+          // Preserve scroll position after prepending
+          requestAnimationFrame(() => {
+            const newHeight = el.scrollHeight
+            el.scrollTop += newHeight - prevHeight
+            setLoadingOlder(false)
+          })
+        }).catch(() => setLoadingOlder(false))
+      }
+    }
+    el.addEventListener("scroll", handleScroll, { passive: true })
+    return () => el.removeEventListener("scroll", handleScroll)
+  }, [roomId, hasMore, loadingOlder, fetchOlderMessages])
 
   // Hide the banner once agents are added
   React.useEffect(() => {
@@ -282,19 +321,48 @@ export function ChatStream({ roomId }: { roomId: string }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 min-h-0">
-        <ScrollArea ref={scrollRef} className="h-full">
-          <div className="py-4">
+        <div ref={scrollRef} className="h-full overflow-auto">
+          {loadingOlder && (
+            <div className="flex items-center justify-center py-2 text-xs text-muted-foreground">
+              Loading older messages...
+            </div>
+          )}
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
               No messages yet. Send a message to get started.
             </div>
           ) : (
-            messages.map((msg) => <MessageBubble key={msg.id} message={msg} agents={agents} />)
+            <div
+              style={{
+                height: virtualizer.getTotalSize(),
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const msg = messages[virtualRow.index]
+                return (
+                  <div
+                    key={msg.id}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    <MessageBubble message={msg} agents={agents} />
+                  </div>
+                )
+              })}
+            </div>
           )}
-            {showAgentsBanner && <AddAgentsBanner roomId={roomId} />}
-            <TypingIndicator agents={agents} roomId={roomId} />
-          </div>
-        </ScrollArea>
+          {showAgentsBanner && <AddAgentsBanner roomId={roomId} />}
+          <TypingIndicator agents={agents} roomId={roomId} />
+        </div>
       </div>
       <div className="shrink-0 border-t px-4 py-3">
         <div className="flex items-center gap-2">

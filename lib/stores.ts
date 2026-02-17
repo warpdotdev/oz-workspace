@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { immer } from "zustand/middleware/immer"
 import type {
   Room,
   Agent,
@@ -127,17 +128,46 @@ export const useAgentStore = create<AgentStore>((set) => ({
 
 interface MessageStore {
   messagesByRoom: Record<string, Message[]>
+  hasMoreByRoom: Record<string, boolean>
+  cursorByRoom: Record<string, string | null>
   fetchMessages: (roomId: string) => Promise<void>
+  fetchOlderMessages: (roomId: string) => Promise<void>
   sendMessage: (roomId: string, content: string) => Promise<Message>
   appendMessage: (roomId: string, message: Message) => void
 }
 
-export const useMessageStore = create<MessageStore>((set) => ({
+export const useMessageStore = create<MessageStore>()(immer((set, get) => ({
   messagesByRoom: {},
+  hasMoreByRoom: {},
+  cursorByRoom: {},
   fetchMessages: async (roomId) => {
-    const res = await fetch(`/api/messages?roomId=${roomId}`)
-    const messages = await res.json()
-    set((s) => ({ messagesByRoom: { ...s.messagesByRoom, [roomId]: messages } }))
+    const res = await fetch(`/api/messages?roomId=${roomId}&limit=50`)
+    const data = await res.json()
+    const messages: Message[] = Array.isArray(data) ? data : data.messages
+    const hasMore: boolean = Array.isArray(data) ? false : (data.hasMore ?? false)
+    const nextCursor: string | null = Array.isArray(data) ? null : (data.nextCursor ?? null)
+    set((s) => {
+      s.messagesByRoom[roomId] = messages
+      s.hasMoreByRoom[roomId] = hasMore
+      s.cursorByRoom[roomId] = nextCursor
+    })
+  },
+  fetchOlderMessages: async (roomId) => {
+    const cursor = get().cursorByRoom[roomId]
+    if (!cursor) return
+    const res = await fetch(`/api/messages?roomId=${roomId}&limit=50&cursor=${cursor}`)
+    const data = await res.json()
+    const olderMessages: Message[] = Array.isArray(data) ? data : data.messages
+    const hasMore: boolean = Array.isArray(data) ? false : (data.hasMore ?? false)
+    const nextCursor: string | null = Array.isArray(data) ? null : (data.nextCursor ?? null)
+    set((s) => {
+      const existing = s.messagesByRoom[roomId] || []
+      const existingIds = new Set(existing.map((m) => m.id))
+      const newMessages = olderMessages.filter((m) => !existingIds.has(m.id))
+      s.messagesByRoom[roomId] = [...newMessages, ...existing]
+      s.hasMoreByRoom[roomId] = hasMore
+      s.cursorByRoom[roomId] = nextCursor
+    })
   },
   sendMessage: async (roomId, content) => {
     const res = await fetch("/api/messages", {
@@ -152,41 +182,26 @@ export const useMessageStore = create<MessageStore>((set) => ({
     const message = await res.json()
     set((s) => {
       const existing = s.messagesByRoom[roomId] || []
-      if (existing.some((m) => m.id === message.id)) {
-        return s
-      }
-      return {
-        messagesByRoom: {
-          ...s.messagesByRoom,
-          [roomId]: [...existing, message],
-        },
+      if (!existing.some((m) => m.id === message.id)) {
+        if (!s.messagesByRoom[roomId]) s.messagesByRoom[roomId] = []
+        s.messagesByRoom[roomId].push(message)
       }
     })
     return message
   },
   appendMessage: (roomId, message) =>
     set((s) => {
-      const existing = s.messagesByRoom[roomId] || []
+      if (!s.messagesByRoom[roomId]) s.messagesByRoom[roomId] = []
+      const existing = s.messagesByRoom[roomId]
       const idx = existing.findIndex((m) => m.id === message.id)
-      // If we already have this message, treat incoming as an update.
       if (idx !== -1) {
-        const updated = [...existing]
-        updated[idx] = { ...existing[idx], ...message }
-        return {
-          messagesByRoom: {
-            ...s.messagesByRoom,
-            [roomId]: updated,
-          },
-        }
-      }
-      return {
-        messagesByRoom: {
-          ...s.messagesByRoom,
-          [roomId]: [...existing, message],
-        },
+        // Update in-place
+        Object.assign(existing[idx], message)
+      } else {
+        existing.push(message)
       }
     }),
-}))
+})))
 
 // ─── Artifact Store ────────────────────────────────────────
 

@@ -119,7 +119,21 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-6xl px-4" style={{ paddingTop: '8rem' }}>
+        <section className="mx-auto w-full max-w-6xl px-4 text-center" style={{ paddingTop: '5rem' }}>
+          <p className="text-sm text-muted-foreground">
+            Oz Workspace is an open-source project by{" "}
+            <a href="https://www.warp.dev" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-4 hover:text-primary">
+              Warp
+            </a>.
+            <br />
+            Clone and contribute at{" "}
+            <a href="https://github.com/warpdotdev/oz-workspace" target="_blank" rel="noopener noreferrer" className="text-foreground underline underline-offset-4 hover:text-primary">
+              github.com/warpdotdev/oz-workspace
+            </a>.
+          </p>
+        </section>
+
+        <section className="mx-auto w-full max-w-6xl px-4" style={{ paddingTop: '3rem' }}>
           <div className="flex flex-col" style={{ gap: '3rem' }}>
             {features.map((feature, index) => {
               const textBlock = (

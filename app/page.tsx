@@ -13,7 +13,8 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 
 const screenshots = {
-  hero: "/rooms.png",
+  hero: "/hero.png",
+  rooms: "/rooms.png",
   tasks: "/kanban.png",
   createAgent: "/agents.png",
   inbox: "/inbox.png",
@@ -25,7 +26,7 @@ const features = [
     title: "Collaborative rooms",
     description:
       "Organize work by project room and let humans and agents coordinate in one shared channel. Plans, PRs, and other artifacts live right next to the conversation.",
-    image: screenshots.hero,
+    image: screenshots.rooms,
     imageAlt: "Oz workspace showing chat in a project room with active collaboration.",
   },
   {
@@ -80,39 +81,41 @@ export default async function Page() {
       </header>
 
       <main>
-        <section className="mx-auto grid w-full max-w-6xl gap-8 px-4 pt-14 md:grid-cols-2 md:items-center md:pt-24">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Multi-agent workspace
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold leading-tight md:text-5xl">
-              Build and ship with teams of autonomous agents.
-            </h1>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              Coordinate specialized agents in real-time rooms, track delivery in Kanban, and
-              generate plans and PRs without losing context.
-            </p>
-            <div className="mt-6 flex flex-wrap items-center gap-2">
-              <Button size="lg" asChild>
-                <Link href="/signup">
-                  Sign up
-                  <ArrowRightIcon />
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link href="/login">Sign in</Link>
-              </Button>
+        <section className="overflow-hidden pt-14 md:pt-24">
+          <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 md:grid-cols-[1fr_1.4fr] md:items-center">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                Multi-agent workspace
+              </p>
+              <h1 className="mt-3 text-3xl font-semibold leading-tight md:text-5xl">
+                Build and ship with teams of autonomous agents.
+              </h1>
+              <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+                Coordinate specialized agents in real-time rooms, track delivery in Kanban, and
+                generate plans and PRs without losing context.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center gap-2">
+                <Button size="lg" asChild>
+                  <Link href="/signup">
+                    Sign up
+                    <ArrowRightIcon />
+                  </Link>
+                </Button>
+                <Button size="lg" variant="outline" asChild>
+                  <Link href="/login">Sign in</Link>
+                </Button>
+              </div>
             </div>
-          </div>
-          <div className="rounded-xl bg-card p-2">
-            <Image
-              src={screenshots.hero}
-              alt="Oz workspace showing active chat and generated plan/PR artifacts."
-              width={1512}
-              height={853}
-              className="h-auto w-full rounded-md"
-              priority
-            />
+            <div className="md:-mr-[calc(50vw-50%)] md:pl-4">
+              <Image
+                src={screenshots.hero}
+                alt="Oz workspace showing active chat and generated plan/PR artifacts."
+                width={1512}
+                height={853}
+                className="h-auto w-full rounded-l-xl border border-r-0"
+                priority
+              />
+            </div>
           </div>
         </section>
 

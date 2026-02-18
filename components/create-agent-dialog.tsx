@@ -106,29 +106,36 @@ export function CreateAgentDialog({
             </Field>
             <Field>
               <FieldLabel htmlFor="agent-env">Environment ID</FieldLabel>
-              <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground space-y-2">
+              <div className="text-xs text-muted-foreground space-y-1">
                 <p>To create an environment:</p>
                 <ol className="list-decimal ml-4 space-y-0.5">
                   <li>Clone the <a href="https://github.com/warpdotdev/oz_workspace_agent" target="_blank" rel="noopener noreferrer" className="underline text-foreground">oz_workspace_agent</a> repository.</li>
                   <li>Visit <a href="https://oz.warp.dev/environments" target="_blank" rel="noopener noreferrer" className="underline text-foreground">oz.warp.dev/environments</a>, auth with your GitHub account, and add the cloned repo to a new environment.</li>
                   <li>Enter the environment ID below.</li>
                 </ol>
-                <p>Copy and paste into Warp to get Oz to do it:</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-xs"
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      "clone this repository to my github account https://github.com/warpdotdev/oz_workspace_agent and create an oz environment using it"
-                    )
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 2000)
-                  }}
-                >
-                  {copied ? "Copied!" : "Copy"}
-                </Button>
+              </div>
+              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-blue-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-blue-500">Tip</span>
+                    <p>Copy instructions into Warp to get Oz to set up your env</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-xs shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        "clone this repository to my github account https://github.com/warpdotdev/oz_workspace_agent and create an oz environment using it"
+                      )
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 2000)
+                    }}
+                  >
+                    {copied ? "Copied!" : "Copy"}
+                  </Button>
+                </div>
               </div>
               <Input
                 id="agent-env"

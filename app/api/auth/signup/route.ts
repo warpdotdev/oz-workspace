@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+import { seedNewAccount } from "@/lib/seed-account"
 
 export async function POST(request: Request) {
   try {
@@ -33,6 +34,13 @@ export async function POST(request: Request) {
     const user = await prisma.user.create({
       data: { name, email, passwordHash },
     })
+
+    // Seed starter agents and example room (non-blocking)
+    try {
+      await seedNewAccount(user.id)
+    } catch (seedError) {
+      console.error("Failed to seed new account:", seedError)
+    }
 
     return NextResponse.json(
       { id: user.id, name: user.name, email: user.email },

@@ -210,7 +210,7 @@ To mention an agent, include @agent-name in your response message.
 
     const environmentId = agent.environmentId || process.env.WARP_ENVIRONMENT_ID
     if (!environmentId) {
-      throw new Error("No environment ID configured. Configure it on the agent.")
+      throw new Error("This agent needs an environment to do its work in. Open the agent in the left panel and add an environment ID.")
     }
     console.log("[invokeAgent] Using environment:", environmentId)
 
@@ -452,7 +452,7 @@ To mention an agent, include @agent-name in your response message.
       const errMsg = error instanceof Error ? error.message : "Unknown error"
       const errorMessage = await prisma.message.create({
         data: {
-          content: `Error: Failed to invoke agent \"${agent.name}\": ${errMsg}`,
+          content: `⚠️ **${agent.name}** couldn't start: ${errMsg}`,
           authorType: "agent",
           sessionUrl: null,
           userId,

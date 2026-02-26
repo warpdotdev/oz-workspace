@@ -2,6 +2,29 @@ generator client {
   provider = "prisma-client"
   output   = "../lib/generated/prisma"
 }
+
+model AgentMention {
+  id               String   @id @default(cuid())
+  agentId          String
+  roomId           String
+  sourceMessageId  String
+  prompt           String
+  status           String   @default("pending")
+  claimedAt        DateTime?
+  leaseExpiresAt   DateTime?
+  completedAt      DateTime?
+  failureReason    String?
+  responseMessageId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  room  Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, sourceMessageId])
+  @@index([agentId, status, createdAt])
+  @@index([agentId, leaseExpiresAt])
+}
 model Workspace {
   id        String   @id @default(cuid())
   name      String
@@ -94,6 +117,7 @@ model Room {
   notifications Notification[]
   tasks         Task[]
   orchestrations AgentOrchestration[]
+  mentions      AgentMention[]
 
   @@index([workspaceId])
 }
@@ -107,6 +131,9 @@ model Agent {
   harness       String   @default("claude-code")
   environmentId String   @default("")
   systemPrompt  String   @default("")
+  openclawConfig String  @default("{}")
+  agentTokenHash String?
+  agentTokenPreview String?
   skills        String   @default("[]")
   mcpServers    String   @default("[]")
   scripts       String   @default("[]")
@@ -127,6 +154,7 @@ model Agent {
   createdTasks  Task[]   @relation("TaskCreator")
   ledOrchestrations AgentOrchestration[]
   orchestrationChildren AgentOrchestrationChild[]
+  mentions      AgentMention[]
 
   @@index([workspaceId])
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { serializeAgentForClient, stringifyOpenClawConfig } from "@/lib/openclaw"
 import {
   getAuthenticatedWorkspaceContext,
   AuthError,
@@ -12,14 +13,7 @@ export async function GET() {
   try {
     const { workspaceId } = await getAuthenticatedWorkspaceContext()
     const agents = await prisma.agent.findMany({ where: { workspaceId }, orderBy: { createdAt: "asc" } })
-    return NextResponse.json(
-      agents.map((a) => ({
-        ...a,
-        skills: JSON.parse(a.skills),
-        mcpServers: JSON.parse(a.mcpServers),
-        scripts: JSON.parse(a.scripts),
-      }))
-    )
+    return NextResponse.json(agents.map((a) => serializeAgentForClient(a)))
   } catch (error) {
     if (error instanceof AuthError) return unauthorizedResponse()
     if (error instanceof ForbiddenError) return forbiddenResponse(error.message)
@@ -31,15 +25,17 @@ export async function POST(request: Request) {
   try {
     const { userId, workspaceId } = await getAuthenticatedWorkspaceContext()
     const body = await request.json()
+    const harness = typeof body.harness === "string" ? body.harness : "oz"
     const agent = await prisma.agent.create({
       data: {
         name: body.name,
         color: body.color ?? "#3B82F6",
         icon: body.icon ?? "robot",
         repoUrl: body.repoUrl ?? "",
-        harness: body.harness ?? "claude-code",
+        harness,
         environmentId: body.environmentId ?? "",
         systemPrompt: body.systemPrompt ?? "",
+        openclawConfig: stringifyOpenClawConfig(body.openclawConfig),
         skills: JSON.stringify(body.skills ?? []),
         mcpServers: JSON.stringify(body.mcpServers ?? []),
         scripts: JSON.stringify(body.scripts ?? []),
@@ -47,12 +43,7 @@ export async function POST(request: Request) {
         userId,
       },
     })
-    return NextResponse.json({
-      ...agent,
-      skills: JSON.parse(agent.skills),
-      mcpServers: JSON.parse(agent.mcpServers),
-      scripts: JSON.parse(agent.scripts),
-    })
+    return NextResponse.json(serializeAgentForClient(agent))
   } catch (error) {
     if (error instanceof AuthError) return unauthorizedResponse()
     if (error instanceof ForbiddenError) return forbiddenResponse(error.message)

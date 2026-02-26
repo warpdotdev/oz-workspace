@@ -53,7 +53,9 @@ export default function AgentsPage() {
                   </CardTitle>
                 </div>
                 <CardDescription className="text-xs truncate" title={agent.environmentId}>
-                  {agent.environmentId || "No environment"}
+                  {agent.harness === "openclaw"
+                    ? "OpenClaw mention polling"
+                    : (agent.environmentId || "No environment")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex items-center gap-2">

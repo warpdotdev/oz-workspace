@@ -9,7 +9,7 @@ import {
 } from "@/lib/auth-helper"
 import { eventBroadcaster } from "@/lib/event-broadcaster"
 import { invokeAgent } from "@/lib/invoke-agent"
-import { extractMentionedNames } from "@/lib/mentions"
+import { getMentionDispatchTargets, enqueueOpenClawMentions } from "@/lib/mention-dispatch"
 
 // Allow enough time for agent invocations triggered by @mentions
 export const maxDuration = 300
@@ -116,21 +116,24 @@ export async function POST(request: Request) {
 
     // If this is a human message, check for @mentions and dispatch mentioned agents
     if (authorType === "human" && typeof content === "string" && content.includes("@") && !room.paused) {
-      // Get room agents only if there is a possibility of mentions.
-      const roomAgents = await prisma.roomAgent.findMany({
-        where: { roomId },
-        include: { agent: true },
+      const targets = await getMentionDispatchTargets({
+        roomId,
+        content,
       })
 
-      const agents = roomAgents.map((ra) => ra.agent)
-      const mentionedNames = extractMentionedNames(content, agents.map((a) => a.name))
-      console.log("[messages] Extracted mentions:", mentionedNames)
+      if (targets.mentionedAgents.length > 0) {
+        console.log("[messages] Extracted mentions:", targets.mentionedAgents.map((agent) => agent.name))
 
-      if (mentionedNames.length > 0) {
-        const mentionedSet = new Set(mentionedNames.map((n) => n.toLowerCase()))
-        const mentionedAgents = agents.filter((agent) => mentionedSet.has(agent.name.toLowerCase()))
+        if (targets.openClawAgents.length > 0) {
+          await enqueueOpenClawMentions({
+            openClawAgents: targets.openClawAgents,
+            roomId,
+            sourceMessageId: message.id,
+            prompt: content,
+          })
+        }
 
-        const ozAgents = mentionedAgents.filter((a) => a.harness === "oz")
+        const ozAgents = targets.ozAgents
 
         // Set agents to "running" NOW so the client sees the thinking state
         // immediately after the POST response (before after() fires).

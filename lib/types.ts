@@ -1,4 +1,4 @@
-export type HarnessType = "codex" | "claude-code" | "gemini-cli" | "oz" | "custom"
+export type HarnessType = "codex" | "claude-code" | "gemini-cli" | "oz" | "openclaw" | "custom"
 export type AgentStatus = "idle" | "running" | "error"
 export type AuthorType = "human" | "agent"
 export type ArtifactType = "plan" | "pr" | "document" | "sheet"
@@ -34,6 +34,14 @@ export interface Agent {
   harness: HarnessType
   environmentId: string
   systemPrompt: string
+  openclawConfig: {
+    pollIntervalSeconds: number
+    maxMentionsPerPoll: number
+    contextMessageCount: number
+    leaseSeconds: number
+  }
+  hasAgentToken?: boolean
+  agentTokenPreview?: string | null
   skills: string[]
   mcpServers: string[]
   scripts: string[]

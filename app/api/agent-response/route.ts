@@ -2,7 +2,7 @@ import { NextResponse, after } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { eventBroadcaster } from "@/lib/event-broadcaster"
 import { tryDecodeAgentCallbackPayload } from "@/lib/agent-callback"
-import { extractMentionedNames } from "@/lib/mentions"
+import { getMentionDispatchTargets, enqueueOpenClawMentions } from "@/lib/mention-dispatch"
 import { invokeAgent } from "@/lib/invoke-agent"
 import { getTaskStatus } from "@/lib/oz-client"
 import { saveWarpArtifacts } from "@/lib/warp-artifacts"
@@ -243,19 +243,27 @@ export async function POST(request: Request) {
       if (roomForPause?.paused) {
         console.log("[agent-response] Room is paused, skipping mention dispatch")
       } else try {
-        const roomAgents = await prisma.roomAgent.findMany({
-          where: { roomId },
-          include: { agent: true },
+        const targets = await getMentionDispatchTargets({
+          roomId,
+          content: messageText,
+          excludeAgentId: agentId,
         })
-        const teammates = roomAgents
-          .map((ra) => ra.agent)
-          .filter((a) => a.id !== agentId && a.harness === "oz")
 
-        const mentionedNames = extractMentionedNames(messageText, teammates.map((t) => t.name))
-        if (mentionedNames.length > 0) {
-          console.log("[agent-response] Extracted mentions:", mentionedNames)
-          const mentionedSet = new Set(mentionedNames.map((n) => n.toLowerCase()))
-          let mentionedAgents = teammates.filter((t) => mentionedSet.has(t.name.toLowerCase()))
+        if (targets.mentionedAgents.length > 0) {
+          console.log("[agent-response] Extracted mentions:", targets.mentionedAgents.map((agent) => agent.name))
+        }
+
+        if (targets.openClawAgents.length > 0) {
+          await enqueueOpenClawMentions({
+            openClawAgents: targets.openClawAgents,
+            roomId,
+            sourceMessageId: taskId,
+            prompt: messageText,
+          })
+        }
+
+        if (targets.ozAgents.length > 0) {
+          let mentionedAgents = targets.ozAgents
 
           // Suppress premature delegate→lead dispatch while an orchestration is running.
           if (activeChildOrchestration?.status === "running") {

@@ -31,57 +31,79 @@ export async function POST(request: Request) {
     const now = new Date()
     const leaseExpiresAt = new Date(now.getTime() + leaseSeconds * 1000)
 
-    const candidates = await prisma.agentMention.findMany({
+    const activeClaimedMentions = await prisma.agentMention.findMany({
       where: {
         agentId,
+        status: "claimed",
         OR: [
-          { status: "pending" },
-          { status: "claimed", leaseExpiresAt: { lt: now } },
+          { leaseExpiresAt: null },
+          { leaseExpiresAt: { gte: now } },
         ],
       },
+      include: {
+        room: { select: { id: true, name: true, description: true } },
+      },
       orderBy: { createdAt: "asc" },
-      take: Math.max(limit * 3, limit),
+      take: limit,
     })
 
-    const claimedIds: string[] = []
-    for (const candidate of candidates) {
-      const claimed = await prisma.agentMention.updateMany({
+    let mentions = activeClaimedMentions
+
+    if (mentions.length === 0) {
+      const candidates = await prisma.agentMention.findMany({
         where: {
-          id: candidate.id,
+          agentId,
           OR: [
             { status: "pending" },
             { status: "claimed", leaseExpiresAt: { lt: now } },
           ],
         },
-        data: {
-          status: "claimed",
-          claimedAt: now,
-          leaseExpiresAt,
-          failureReason: null,
-        },
+        orderBy: { createdAt: "asc" },
+        take: Math.max(limit * 3, limit),
       })
 
-      if (claimed.count === 1) {
-        claimedIds.push(candidate.id)
+      const claimedIds: string[] = []
+      for (const candidate of candidates) {
+        const claimed = await prisma.agentMention.updateMany({
+          where: {
+            id: candidate.id,
+            OR: [
+              { status: "pending" },
+              { status: "claimed", leaseExpiresAt: { lt: now } },
+            ],
+          },
+          data: {
+            status: "claimed",
+            claimedAt: now,
+            leaseExpiresAt,
+            failureReason: null,
+          },
+        })
+
+        if (claimed.count === 1) {
+          claimedIds.push(candidate.id)
+        }
+        if (claimedIds.length >= limit) break
       }
-      if (claimedIds.length >= limit) break
+
+      if (claimedIds.length > 0) {
+        mentions = await prisma.agentMention.findMany({
+          where: { id: { in: claimedIds } },
+          include: {
+            room: { select: { id: true, name: true, description: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        })
+      }
     }
 
-    if (claimedIds.length === 0) {
+    if (mentions.length === 0) {
       return NextResponse.json({
         mentions: [],
         pollIntervalSeconds: config.pollIntervalSeconds,
         leaseSeconds,
       })
     }
-
-    const mentions = await prisma.agentMention.findMany({
-      where: { id: { in: claimedIds } },
-      include: {
-        room: { select: { id: true, name: true, description: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    })
 
     const messagesByRoom = new Map<string, Array<{
       id: string

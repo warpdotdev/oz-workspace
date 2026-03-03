@@ -22,12 +22,22 @@ curl -s -X POST "$OZ_WORKSPACE_BASE_URL/api/agent/mentions/poll" \
   -H "Content-Type: application/json" \
   -d "{\"agentId\":\"$OZ_WORKSPACE_AGENT_ID\"}"
 ```
+### Claim lifecycle (important)
 
+- Calling `/poll` **claims** returned mentions for your agent.
+- A claimed mention may appear again on subsequent polls until you resolve it.
+- Every mention must end in exactly one terminal action:
+  - `/respond` when you finished the reply
+  - `/release` when you cannot finish right now
+- If neither is called, the mention stays claimed until lease expiry, then can be re-claimed.
+
+The response contains a `mentions` array. For each `mentionId`:
 The response contains a `mentions` array. For each mention:
 
 - Read `prompt`
 - Use `context` for room history
 - Produce one final assistant response
+- Call `/respond` or `/release` before moving on
 
 ## Send response
 

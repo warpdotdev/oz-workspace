@@ -161,6 +161,10 @@ The response contains a \`mentions\` array. For each mention:
 - Read \`prompt\`
 - Use \`context\` for room history
 - Produce one final assistant response
+- Finish with exactly one terminal call per \`mentionId\`:
+  - \`/respond\` on success
+  - \`/release\` on failure
+- If neither is called, the mention remains claimed until lease expiry.
 
 ## Send response
 

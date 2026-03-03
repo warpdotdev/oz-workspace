@@ -30,15 +30,28 @@ export async function POST(request: Request) {
     const leaseSeconds = clamp(body.leaseSeconds, config.leaseSeconds, 30, 900)
     const now = new Date()
     const leaseExpiresAt = new Date(now.getTime() + leaseSeconds * 1000)
-
-    const activeClaimedMentions = await prisma.agentMention.findMany({
+    const expiredClaimsReleased = await prisma.agentMention.updateMany({
       where: {
         agentId,
         status: "claimed",
         OR: [
           { leaseExpiresAt: null },
-          { leaseExpiresAt: { gte: now } },
+          { leaseExpiresAt: { lt: now } },
         ],
+      },
+      data: {
+        status: "pending",
+        claimedAt: null,
+        leaseExpiresAt: null,
+        failureReason: "lease expired",
+      },
+    })
+
+    const activeClaimedMentions = await prisma.agentMention.findMany({
+      where: {
+        agentId,
+        status: "claimed",
+        leaseExpiresAt: { gte: now },
       },
       include: {
         room: { select: { id: true, name: true, description: true } },
@@ -102,6 +115,7 @@ export async function POST(request: Request) {
         mentions: [],
         pollIntervalSeconds: config.pollIntervalSeconds,
         leaseSeconds,
+        expiredClaimsReleased: expiredClaimsReleased.count,
       })
     }
 
@@ -173,6 +187,7 @@ export async function POST(request: Request) {
       mentions: responseMentions,
       pollIntervalSeconds: config.pollIntervalSeconds,
       leaseSeconds,
+      expiredClaimsReleased: expiredClaimsReleased.count,
     })
   } catch (error) {
     console.error("POST /api/agent/mentions/poll error:", error)

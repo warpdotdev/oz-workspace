@@ -21,7 +21,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "immer": "^11.1.4",
-    "next": "16.1.6",
+    "next": "16.2.6",
     "next-auth": "^5.0.0-beta.30",
     "oz-agent-sdk": "^1.0.0-alpha.8",
     "prisma": "^7.3.0",
@@ -46,7 +46,7 @@
     "@types/react-dom": "^19",
     "dotenv": "^17.2.4",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"

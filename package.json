@@ -52,6 +52,9 @@
     "typescript": "^5"
   },
   "overrides": {
-    "@hono/node-server": "1.19.13"
+    "@hono/node-server": "1.19.13",
+    "router": {
+      "path-to-regexp": "8.4.0"
+    }
   }
 }

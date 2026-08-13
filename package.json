@@ -24,7 +24,7 @@
     "next": "16.2.11",
     "next-auth": "5.0.0-beta.32",
     "oz-agent-sdk": "^1.0.0-alpha.8",
-    "prisma": "^7.8.0",
+    "prisma": "^7.9.1",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",

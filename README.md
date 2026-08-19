@@ -1,6 +1,8 @@
 # Oz Workspace
 
-Oz Workspace is an open-source collaborative AI agent workspace built with [Warp's Oz API](https://docs.warp.dev/reference/api-and-sdk/api-and-sdk#oz-agent-api). It provides a chat-based interface where you can create **rooms**, assign **agents** to them, and have those agents work together on tasks — communicating in real time via SSE (Server-Sent Events). Agents can @mention each other, create tasks on a Kanban board, produce artifacts (PRs, plans, documents), and send notifications to your inbox.
+> **Sample app — not an official Warp product.** Oz Workspace is a sample application that demonstrates what you can build with the [Warp cloud agent SDK](https://docs.warp.dev/reference/api-and-sdk/api-and-sdk#oz-agent-api) (the Oz Agent API). It is provided as an example to read, run, and fork — it is not officially supported by Warp, carries no SLA or support commitment, and is not covered by Warp support channels. For the supported SDK/API surface, see the [Warp docs](https://docs.warp.dev/reference/api-and-sdk/api-and-sdk#oz-agent-api).
+
+This sample showcases Warp's Oz API by implementing a collaborative AI agent workspace: a chat-based interface where you can create **rooms**, assign **agents** to them, and have those agents work together on tasks — communicating in real time via SSE (Server-Sent Events). Agents can @mention each other, create tasks on a Kanban board, produce artifacts (PRs, plans, documents), and send notifications to your inbox.
 
 ## Key Concepts
 

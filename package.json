@@ -53,6 +53,7 @@
   },
   "overrides": {
     "@hono/node-server": "1.19.13",
+    "deepmerge-ts": "8.0.0",
     "sharp": "^0.35.0",
     "postcss": "8.5.23",
     "esbuild": "0.28.1",

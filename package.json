@@ -65,6 +65,7 @@
     "ip-address": "10.3.1",
     "nanoid": "3.3.18",
     "mysql2": "3.22.0",
-    "browserslist": "4.28.7"
+    "browserslist": "4.28.7",
+    "js-yaml": "^4.3.2"
   }
 }

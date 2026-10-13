@@ -21,7 +21,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "immer": "^11.1.4",
-    "next": "^16.3.3",
+    "next": "^16.3.8",
     "next-auth": "5.0.0-beta.32",
     "oz-agent-sdk": "^1.0.0-alpha.8",
     "prisma": "^7.9.1",
@@ -54,7 +54,7 @@
   "overrides": {
     "@hono/node-server": "1.19.15",
     "deepmerge-ts": "8.0.0",
-    "sharp": "^0.35.0",
+    "sharp": "^0.35.4",
     "postcss": "8.5.23",
     "esbuild": "0.28.1",
     "@babel/core": "7.29.6",
